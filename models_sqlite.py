@@ -4,6 +4,7 @@ SQLite database models and operations using SQLAlchemy
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
+import bcrypt
 
 db = SQLAlchemy()
 
@@ -14,13 +15,23 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
     age = db.Column(db.Integer, nullable=False)
     role = db.Column(db.String(20), nullable=False, default='user')
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    def set_password(self, password):
+        """Hash and set the password"""
+        salt = bcrypt.gensalt()
+        self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    
+    def check_password(self, password):
+        """Verify password against the hash"""
+        return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
+    
     def to_dict(self):
-        """Convert user object to dictionary"""
+        """Convert user object to dictionary (excluding password)"""
         return {
             'id': self.id,
             'name': self.name,
@@ -48,6 +59,7 @@ class UserStore:
                 age=user_data['age'],
                 role=user_data.get('role', 'user')
             )
+            user.set_password(user_data['password'])
             db.session.add(user)
             db.session.commit()
             return user.to_dict()
@@ -63,9 +75,14 @@ class UserStore:
     
     @staticmethod
     def get_user_by_email(email):
-        """Get user by email"""
+        """Get user by email (returns dict)"""
         user = User.query.filter_by(email=email).first()
         return user.to_dict() if user else None
+    
+    @staticmethod
+    def get_user_object_by_email(email):
+        """Get user object by email (for password verification)"""
+        return User.query.filter_by(email=email).first()
     
     @staticmethod
     def get_all_users():
@@ -90,6 +107,8 @@ class UserStore:
                 user.age = user_data['age']
             if 'role' in user_data:
                 user.role = user_data['role']
+            if 'password' in user_data:
+                user.set_password(user_data['password'])
             
             user.updated_at = datetime.utcnow()
             db.session.commit()
@@ -149,12 +168,14 @@ class UserStore:
             {
                 "name": "Admin User",
                 "email": "admin@example.com",
+                "password": "Admin@123",
                 "age": 30,
                 "role": "admin"
             },
             {
                 "name": "John Doe",
                 "email": "john@example.com",
+                "password": "User@123",
                 "age": 25,
                 "role": "user"
             }

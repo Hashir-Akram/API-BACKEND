@@ -30,7 +30,7 @@ def validate_user_data(data, is_update=False):
     
     # For create, all fields are required. For update, fields are optional
     if not is_update:
-        required_fields = ["name", "email", "age"]
+        required_fields = ["name", "email", "age", "password"]
         for field in required_fields:
             if field not in data or data[field] is None or str(data[field]).strip() == "":
                 raise ValidationError(
@@ -97,6 +97,52 @@ def validate_user_data(data, is_update=False):
             )
         validated["role"] = role
     
+    # Validate password
+    if "password" in data:
+        password = str(data["password"])
+        
+        if len(password) < 8:
+            raise ValidationError(
+                "Password must be at least 8 characters long",
+                error_code="INVALID_PASSWORD"
+            )
+        
+        if len(password) > 128:
+            raise ValidationError(
+                "Password must be less than 128 characters",
+                error_code="INVALID_PASSWORD"
+            )
+        
+        # Check for uppercase letter
+        if not re.search(r'[A-Z]', password):
+            raise ValidationError(
+                "Password must contain at least one uppercase letter",
+                error_code="INVALID_PASSWORD"
+            )
+        
+        # Check for lowercase letter
+        if not re.search(r'[a-z]', password):
+            raise ValidationError(
+                "Password must contain at least one lowercase letter",
+                error_code="INVALID_PASSWORD"
+            )
+        
+        # Check for digit
+        if not re.search(r'\d', password):
+            raise ValidationError(
+                "Password must contain at least one digit",
+                error_code="INVALID_PASSWORD"
+            )
+        
+        # Check for special character
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            raise ValidationError(
+                "Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)",
+                error_code="INVALID_PASSWORD"
+            )
+        
+        validated["password"] = password
+    
     return validated
 
 
@@ -119,7 +165,14 @@ def validate_login_data(data):
             error_code="MISSING_FIELD"
         )
     
+    if "password" not in data or not data["password"]:
+        raise ValidationError(
+            "Missing required field: password",
+            error_code="MISSING_FIELD"
+        )
+    
     email = str(data["email"]).strip()
+    password = str(data["password"])
     
     try:
         email_info = validate_email(email, check_deliverability=False)
@@ -130,7 +183,7 @@ def validate_login_data(data):
             error_code="INVALID_EMAIL"
         )
     
-    return {"email": validated_email}
+    return {"email": validated_email, "password": password}
 
 
 def validate_user_id(user_id_str):

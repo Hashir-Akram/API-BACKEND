@@ -9,7 +9,7 @@ from datetime import datetime
 import os
 
 from config import Config
-from models_sqlite import UserStore, init_db
+from models_sqlite import UserStore, init_db, User
 from validators import validate_user_data, validate_login_data, validate_user_id, ValidationError
 from responses import success_response, error_response
 from auth import jwt_required_custom, admin_required, get_current_user_info
@@ -24,7 +24,22 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'us
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
-CORS(app)
+# CORS Configuration - allows frontend to communicate with backend
+# For production, update origins list with your deployed frontend URL
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "http://localhost:3000",      # Vite dev server
+            "http://localhost:5173",      # Alternative Vite port
+            "http://127.0.0.1:5000",      # Local development
+            # Add your production frontend URL here:
+            # "https://your-frontend.onrender.com"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
 jwt = JWTManager(app)
 
 # Initialize database
@@ -136,7 +151,8 @@ def login():
     
     Request Body:
         {
-            "email": "user@example.com"
+            "email": "user@example.com",
+            "password": "your_password"
         }
     
     Response:
@@ -160,19 +176,31 @@ def login():
                 status_code=400
             )
         
-        # Validate login data
+        # Validate login data (email and password)
         validated_data = validate_login_data(data)
         email = validated_data["email"]
+        password = validated_data["password"]
         
-        # Find user by email
-        user = user_store.get_user_by_email(email)
+        # Find user object by email (need object to verify password)
+        user_obj = user_store.get_user_object_by_email(email)
         
-        if not user:
+        if not user_obj:
             return error_response(
-                message="User not found with provided email",
-                error_code="USER_NOT_FOUND",
-                status_code=404
+                message="Invalid email or password",
+                error_code="INVALID_CREDENTIALS",
+                status_code=401
             )
+        
+        # Verify password
+        if not user_obj.check_password(password):
+            return error_response(
+                message="Invalid email or password",
+                error_code="INVALID_CREDENTIALS",
+                status_code=401
+            )
+        
+        # Get user dict for response
+        user = user_obj.to_dict()
         
         # Create JWT token with user information
         # Using user_id as the identity (simpler approach)
