@@ -29,12 +29,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 CORS(app, resources={
     r"/*": {
         "origins": [
-            "http://localhost:3000",      # Vite dev server
-            "http://localhost:5173",      # Alternative Vite port
-            "http://127.0.0.1:5000",      # Local development
-            "https://react-frontend-api-testing.vercel.app/",  # Production frontend URL
-            # Add your production frontend URL here:
-            "https://react-frontend-api-testing.onrender.com/"
+            "http://localhost:3000",                              # Vite dev server
+            "http://localhost:5173",                              # Alternative Vite port
+            "http://127.0.0.1:5000",                             # Local development
+            "https://react-frontend-api-testing.vercel.app",     # Vercel Production (NO trailing slash!)
+            "*"  # Allow all origins temporarily for debugging
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
