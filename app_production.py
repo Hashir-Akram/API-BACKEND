@@ -27,9 +27,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # For development
 CORS(app)
 # For production, uncomment and update with your domain:
-CORS(app, resources={r"/*": {"origins": ["react-frontend-api-testing.vercel.app"]}})
+CORS(app, resources={r"/*": {"origins": ["https://react-frontend-api-testing.vercel.app/"]}})
 
-# Initialize extensions
+# Initialize extensionsgit pull
 jwt = JWTManager(app)
 
 # Initialize database
