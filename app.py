@@ -32,6 +32,7 @@ CORS(app, resources={
             "http://localhost:3000",      # Vite dev server
             "http://localhost:5173",      # Alternative Vite port
             "http://127.0.0.1:5000",      # Local development
+            "https://react-frontend-api-testing.onrender.com"
             # Add your production frontend URL here:
             # "https://your-frontend.onrender.com"
         ],
