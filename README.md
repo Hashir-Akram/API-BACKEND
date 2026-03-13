@@ -1,62 +1,150 @@
-# API Backend - RESTful API for Testing & Automation Practice
+# API Backend — RESTful API
 
-A production-grade RESTful backend API built with Flask, designed specifically for teaching and practicing API testing and automation. This API includes realistic features, comprehensive validations, and various failure scenarios to provide a complete testing experience.
-
-## 🎯 Purpose
-
-This backend simulates a real enterprise API service with:
-- Complete CRUD operations
-- JWT authentication & authorization
-- Comprehensive input validation
-- Standardized response formats
-- Multiple error scenarios
-- Role-based access control
-
-Perfect for QA engineers and automation testers to practice:
-- API testing strategies
-- Test automation frameworks
-- Positive and negative test scenarios
-- Authentication/Authorization testing
-- Error handling validation
+A Flask-based RESTful API backend with JWT authentication, SQLite persistence, role-based access control, and full CRUD for users, projects, tasks, and comments. Built for API testing practice and integration with the React frontend.
 
 ---
 
-## 🚀 Quick Start
+## 🔗 Related Repository
+
+**React Frontend:** [https://github.com/Hashir-Akram/REACT_FRONTEND_API_TESTING.git](https://github.com/Hashir-Akram/REACT_FRONTEND_API_TESTING.git)
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
+- Python 3.8+
+- pip
 
-- Python 3.8 or higher
-- pip (Python package manager)
+### Setup
 
-### Installation
+```bash
+# 1. Clone the repo
+git clone <this-repo-url>
+cd "API Backend"
 
-1. **Clone or download this repository**
+# 2. Create and activate virtual environment
+python -m venv venv
 
-2. **Navigate to the project directory**
-   ```bash
-   cd "API Backend"
-   ```
+# Windows
+venv\Scripts\activate
+# macOS / Linux
+source venv/bin/activate
 
-3. **Create a virtual environment (recommended)**
-   ```bash
-   python -m venv venv
-   
-   # On Windows
-   venv\Scripts\activate
-   
-   # On macOS/Linux
-   source venv/bin/activate
-   ```
+# 3. Install dependencies
+pip install -r requirements.txt
 
-4. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# 4. Start the server
+python app.py
+```
 
-5. **Run the server**
-   ```bash
-   python app.py
-   ```
+The API will be available at **http://localhost:5000**
+
+---
+
+## 🔑 Default Credentials
+
+| Role  | Email                  | Password    |
+|-------|------------------------|-------------|
+| Admin | admin@example.com      | Admin@123   |
+| User  | john@example.com       | John@123    |
+| User  | sara@example.com       | Sara@123    |
+
+---
+
+## 📡 API Endpoints
+
+### Authentication
+| Method | Endpoint   | Description             | Auth Required |
+|--------|------------|-------------------------|---------------|
+| POST   | /register  | Register a new user     | No            |
+| POST   | /login     | Login and get JWT token | No            |
+| GET    | /me        | Get current user info   | Yes           |
+| PUT    | /me        | Update current profile  | Yes           |
+
+### Users
+| Method | Endpoint       | Description        | Auth Required |
+|--------|----------------|--------------------|---------------|
+| GET    | /users         | List all users     | Admin         |
+| POST   | /users         | Create a user      | Admin         |
+| GET    | /users/:id     | Get user by ID     | Yes           |
+| PUT    | /users/:id     | Update user        | Admin         |
+| DELETE | /users/:id     | Delete user        | Admin         |
+
+### Projects
+| Method | Endpoint                  | Description       | Auth Required |
+|--------|---------------------------|-------------------|---------------|
+| GET    | /projects                 | List all projects | Yes           |
+| POST   | /projects                 | Create project    | Yes           |
+| GET    | /projects/:id             | Get project       | Yes           |
+| PUT    | /projects/:id             | Update project    | Yes           |
+| PATCH  | /projects/:id/archive     | Archive project   | Yes           |
+| DELETE | /projects/:id             | Delete project    | Admin         |
+
+### Tasks
+| Method | Endpoint                | Description         | Auth Required |
+|--------|-------------------------|---------------------|---------------|
+| GET    | /tasks                  | List all tasks      | Yes           |
+| POST   | /tasks                  | Create task         | Yes           |
+| GET    | /tasks/:id              | Get task by ID      | Yes           |
+| PUT    | /tasks/:id              | Update task         | Yes           |
+| PATCH  | /tasks/:id/status       | Update task status  | Yes           |
+| PATCH  | /tasks/bulk-update      | Bulk update tasks   | Yes           |
+| DELETE | /tasks/:id              | Delete task         | Yes           |
+
+### Comments
+| Method | Endpoint                    | Description        | Auth Required |
+|--------|-----------------------------|--------------------|---------------|
+| GET    | /tasks/:id/comments         | List comments      | Yes           |
+| POST   | /tasks/:id/comments         | Add comment        | Yes           |
+| DELETE | /comments/:id               | Delete comment     | Yes           |
+
+### Analytics & Utilities
+| Method | Endpoint            | Description               | Auth Required |
+|--------|---------------------|---------------------------|---------------|
+| GET    | /analytics/summary  | Dashboard stats           | Yes           |
+| GET    | /audit-logs         | Activity audit trail      | Admin         |
+| GET    | /health             | Health check              | No            |
+| GET    | /error              | Simulate server error     | No            |
+| POST   | /reset              | Reset DB to seed data     | Admin         |
+
+---
+
+## 🔐 Authentication
+
+All protected endpoints require a JWT token in the `Authorization` header:
+
+```
+Authorization: Bearer <your_token>
+```
+
+Get your token by calling `POST /login` with your email and password.
+
+---
+
+## 🛠 Tech Stack
+
+- **Flask 3.0** — Web framework
+- **Flask-JWT-Extended** — JWT authentication
+- **Flask-SQLAlchemy** — ORM
+- **SQLite** — Database
+- **bcrypt** — Password hashing
+- **Flask-CORS** — Cross-origin support
+
+---
+
+## 📁 Project Structure
+
+```
+API Backend/
+├── app.py               # Main Flask app & all routes
+├── models_sqlite.py     # SQLAlchemy models & DB seed
+├── auth.py              # JWT helpers & decorators
+├── validators.py        # Input validation
+├── responses.py         # Standardized response helpers
+├── config.py            # App configuration
+└── requirements.txt     # Python dependencies
+```
 
 The API will be available at: `http://127.0.0.1:5000`
 
