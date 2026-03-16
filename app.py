@@ -1319,19 +1319,15 @@ def get_audit_logs():
 
 
 # ============================================================================
-# RESET ENDPOINT (FOR TESTING)
+# RESET ENDPOINT (ADMIN ONLY - FOR TESTING)
 # ============================================================================
 
 @app.route('/reset', methods=['POST'])
+@jwt_required_custom()
+@admin_required()
 def reset_data():
     """
-    Reset the data store to initial state (for testing purposes)
-    
-    Response:
-        {
-            "status": "success",
-            "message": "Data store reset successfully"
-        }
+    Reset the data store to initial state (admin only, for testing purposes)
     """
     try:
         user_store.reset()
@@ -1345,6 +1341,268 @@ def reset_data():
             error_code="RESET_ERROR",
             status_code=500
         )
+
+
+# ============================================================================
+# LAB / PRACTICE ENDPOINTS  (for teaching API testing concepts)
+# ============================================================================
+
+@app.route('/api/echo', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+def echo():
+    """Echo back exactly what the client sent — body, headers, method, query params."""
+    return success_response(
+        data={
+            "method": request.method,
+            "url": request.url,
+            "query_params": dict(request.args),
+            "headers": {k: v for k, v in request.headers if k.lower() not in ('host', 'content-length')},
+            "body": request.get_json(silent=True) or request.form.to_dict() or None,
+            "raw_body": request.get_data(as_text=True) or None,
+        },
+        message="Echo: request received and reflected"
+    )
+
+
+@app.route('/api/status/<int:code>', methods=['GET'])
+def status_code_simulator(code):
+    """
+    Return any HTTP status code on demand.
+    Use to practice asserting status codes in your tests.
+    Supports: 200, 201, 204, 301, 400, 401, 403, 404, 409, 422, 429, 500, 503
+    """
+    allowed = {200, 201, 204, 301, 400, 401, 403, 404, 409, 422, 429, 500, 503}
+    if code not in allowed:
+        return error_response(
+            message=f"Status code {code} is not supported. Choose from: {sorted(allowed)}",
+            error_code="UNSUPPORTED_STATUS_CODE",
+            status_code=400
+        )
+    messages = {
+        200: "OK", 201: "Created", 204: "No Content",
+        301: "Moved Permanently", 400: "Bad Request", 401: "Unauthorized",
+        403: "Forbidden", 404: "Not Found", 409: "Conflict",
+        422: "Unprocessable Entity", 429: "Too Many Requests",
+        500: "Internal Server Error", 503: "Service Unavailable"
+    }
+    body = success_response(
+        data={"requested_code": code, "meaning": messages.get(code, "Unknown")},
+        message=f"Simulated HTTP {code}: {messages.get(code, 'Unknown')}"
+    )
+    return body[0] if isinstance(body, tuple) else body, code
+
+
+@app.route('/api/delay/<int:seconds>', methods=['GET'])
+def delay_response(seconds):
+    """
+    Respond after a deliberate delay (1–10 seconds).
+    Use to practice timeout handling and explicit waits in your tests.
+    """
+    import time
+    if seconds < 1 or seconds > 10:
+        return error_response(
+            message="Delay must be between 1 and 10 seconds.",
+            error_code="INVALID_DELAY",
+            status_code=400
+        )
+    time.sleep(seconds)
+    return success_response(
+        data={"delayed_seconds": seconds},
+        message=f"Response delivered after {seconds} second(s)"
+    )
+
+
+import random as _random
+
+@app.route('/api/flaky', methods=['GET'])
+def flaky_endpoint():
+    """
+    Randomly returns 200 OK or 500 Internal Server Error (50/50).
+    Use to practice retry logic, test stability, and flaky test detection.
+    Add ?fail_rate=0.8 to change the failure probability (0.0 – 1.0).
+    """
+    try:
+        fail_rate = float(request.args.get('fail_rate', 0.5))
+        fail_rate = max(0.0, min(1.0, fail_rate))
+    except (ValueError, TypeError):
+        fail_rate = 0.5
+
+    if _random.random() < fail_rate:
+        return error_response(
+            message="Flaky endpoint: this request failed (random failure simulated).",
+            error_code="FLAKY_FAILURE",
+            status_code=500
+        )
+    return success_response(
+        data={"fail_rate": fail_rate, "result": "success"},
+        message="Flaky endpoint: this request succeeded (random)"
+    )
+
+
+@app.route('/api/headers', methods=['GET'])
+def inspect_headers():
+    """
+    Return all request headers the client sent.
+    Use to practice custom header injection (Authorization, X-Custom-Header, etc.).
+    """
+    return success_response(
+        data={
+            "headers_received": {k: v for k, v in request.headers},
+            "total_headers": len(list(request.headers))
+        },
+        message="Headers received and reflected"
+    )
+
+
+@app.route('/api/paginate', methods=['GET'])
+def paginate_practice():
+    """
+    Returns a large paginated dataset (100 items) for pagination testing practice.
+    Query params: page (default 1), per_page (default 10, max 50)
+    """
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+        per_page = min(50, max(1, int(request.args.get('per_page', 10))))
+    except (ValueError, TypeError):
+        return error_response("page and per_page must be integers.", "INVALID_PARAMS", 400)
+
+    total = 100
+    total_pages = (total + per_page - 1) // per_page
+    start = (page - 1) * per_page
+    end = min(start + per_page, total)
+
+    items = [
+        {"id": i + 1, "name": f"Item {i + 1}", "value": (i + 1) * 10, "category": ["A", "B", "C"][i % 3]}
+        for i in range(start, end)
+    ]
+
+    return success_response(
+        data={
+            "items": items,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1,
+            }
+        },
+        message=f"Page {page} of {total_pages}"
+    )
+
+
+@app.route('/api/upload', methods=['POST'])
+def file_upload_practice():
+    """
+    Accept a multipart file upload and return metadata.
+    Use to practice multipart/form-data requests and file upload assertions.
+    Supports images, PDFs, and text files (max 5 MB).
+    """
+    import os as _os
+    if 'file' not in request.files:
+        return error_response("No file field in request. Use multipart/form-data with field name 'file'.", "NO_FILE", 400)
+
+    file = request.files['file']
+    if file.filename == '':
+        return error_response("File field is empty — no file was selected.", "EMPTY_FILE", 400)
+
+    filename = file.filename
+    ext = _os.path.splitext(filename)[1].lower()
+    allowed_exts = {'.jpg', '.jpeg', '.png', '.gif', '.pdf', '.txt', '.csv', '.json'}
+    if ext not in allowed_exts:
+        return error_response(
+            f"File type '{ext}' not allowed. Allowed: {sorted(allowed_exts)}",
+            "INVALID_FILE_TYPE", 400
+        )
+
+    content = file.read()
+    size_bytes = len(content)
+    max_size = 5 * 1024 * 1024  # 5 MB
+    if size_bytes > max_size:
+        return error_response("File exceeds 5 MB limit.", "FILE_TOO_LARGE", 413)
+
+    return success_response(
+        data={
+            "filename": filename,
+            "extension": ext,
+            "size_bytes": size_bytes,
+            "size_kb": round(size_bytes / 1024, 2),
+            "content_type": file.content_type,
+            "extra_fields": dict(request.form),
+        },
+        message="File uploaded and inspected successfully"
+    )
+
+
+# ---- API Versioning practice: v1 vs v2 ----
+
+@app.route('/api/v1/users', methods=['GET'])
+@jwt_required_custom()
+@admin_required()
+def get_users_v1():
+    """V1 user list — minimal fields: id, name, email, role."""
+    users, _ = user_store.list_users({})
+    slim = [{"id": u["id"], "name": u["name"], "email": u["email"], "role": u["role"]} for u in users]
+    return success_response(
+        data={"users": slim, "count": len(slim), "api_version": "v1"},
+        message="V1: Minimal user fields returned"
+    )
+
+
+@app.route('/api/v2/users', methods=['GET'])
+@jwt_required_custom()
+@admin_required()
+def get_users_v2():
+    """
+    V2 user list — full fields including age, created_at, updated_at.
+    Teaches API versioning and backward-compatibility testing.
+    """
+    users, pagination = user_store.list_users({})
+    return success_response(
+        data={
+            "users": users,
+            "count": len(users),
+            "pagination": pagination,
+            "api_version": "v2",
+            "changelog": "v2 adds age, created_at, updated_at to every user object"
+        },
+        message="V2: Full user fields returned"
+    )
+
+
+@app.route('/api/sanity', methods=['POST'])
+def security_sanity():
+    """
+    Security probe endpoint — validates and sanitizes common injection payloads.
+    Use to learn about input sanitization and security testing basics.
+    Send any JSON body and see what gets flagged.
+    """
+    import html as _html
+    import re as _re
+    data = request.get_json(silent=True) or {}
+
+    sql_pattern = _re.compile(
+        r"(--|;|'|\bDROP\b|\bSELECT\b|\bINSERT\b|\bDELETE\b|\bUPDATE\b|\bUNION\b)",
+        _re.IGNORECASE
+    )
+    xss_pattern = _re.compile(r"<script|javascript:|on\w+=", _re.IGNORECASE)
+
+    results = {}
+    for key, value in data.items():
+        str_val = str(value)
+        results[key] = {
+            "original": str_val,
+            "html_escaped": _html.escape(str_val),
+            "sql_injection_risk": bool(sql_pattern.search(str_val)),
+            "xss_risk": bool(xss_pattern.search(str_val)),
+            "length": len(str_val),
+        }
+
+    flagged = [k for k, v in results.items() if v["sql_injection_risk"] or v["xss_risk"]]
+    return success_response(
+        data={"fields_analyzed": results, "flagged_fields": flagged, "total_flagged": len(flagged)},
+        message=f"Sanity check complete. {len(flagged)} field(s) flagged for potential injection."
+    )
 
 
 # ============================================================================

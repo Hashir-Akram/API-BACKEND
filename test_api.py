@@ -44,7 +44,7 @@ def run_tests():
     try:
         response = requests.post(
             f"{BASE_URL}/login",
-            json={"email": "admin@example.com"}
+            json={"email": "admin@example.com", "password": "Admin@123"}
         )
         passed = response.status_code == 200
         print_result("Login as admin", passed, response)
@@ -64,7 +64,7 @@ def run_tests():
     try:
         response = requests.post(
             f"{BASE_URL}/login",
-            json={"email": "john@example.com"}
+            json={"email": "john@example.com", "password": "User@123"}
         )
         passed = response.status_code == 200
         print_result("Login as regular user", passed, response)
